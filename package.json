@@ -1,5 +1,5 @@
 {
-  "name": "@unisat/ord-utils",
+  "name": "ord-tools",
   "version": "0.4.0",
   "description": "Ordinals Utils",
   "keywords": [
@@ -34,6 +34,7 @@
   "dependencies": {
     "@bitcoinerlab/secp256k1": "^1.0.5",
     "bignumber.js": "^9.1.1",
+    "bip32": "^4.0.0",
     "bitcoinjs-lib": "^6.1.0",
     "bs58check": "^2.1.2",
     "ecpair": "^2.1.0"

@@ -1,8 +1,14 @@
-import { OrdTransaction, UnspentOutput } from "./OrdTransaction";
+import { OrdTransaction, UnspentOutput, toXOnly } from "./OrdTransaction";
 import { OrdUnit } from "./OrdUnit";
 import { OrdUnspendOutput, UTXO_DUST } from "./OrdUnspendOutput";
-import { satoshisToAmount } from "./utils";
+import * as bitcoin from "bitcoinjs-lib";
+import { satoshisToAmount, witnessStackToScriptWitness } from "./utils";
+import ecc from "@bitcoinerlab/secp256k1";
+import BIP32Factory from "bip32";
+const rng = require("randombytes");
 
+export * from "./LocalWallet";
+export * from "./brc20"
 export async function createSendBTC({
   utxos,
   toAddress,
@@ -605,4 +611,111 @@ export async function createSplitOrdUtxoV2({
   }
 
   return { psbt, splitedCount };
+}
+
+export async function inscribe({
+  address,
+  utxos,
+  inscription,
+  wallet,
+  network,
+  pubkey,
+  feeRate,
+  changeAddress,
+  dump,
+}: {
+  address: string;
+  utxos: UnspentOutput[];
+  inscription: { body: Buffer; contentType: string };
+  wallet: any;
+  network: any;
+  pubkey: string;
+  changeAddress: string;
+  feeRate: number;
+  dump: boolean;
+}) {
+  bitcoin.initEccLib(ecc);
+  const bip32 = BIP32Factory(ecc);
+  const internalKey = bip32.fromSeed(rng(64), network);
+  const internalPubkey = toXOnly(internalKey.publicKey);
+  const asm = `${internalPubkey.toString("hex")} OP_CHECKSIG OP_0 OP_IF ${Buffer.from("ord", 'utf8').toString("hex")} 01 ${Buffer.from(inscription.contentType, 'utf8').toString('hex')} OP_0 ${inscription.body.toString('hex')} OP_ENDIF`
+  const leafScript = bitcoin.script.fromASM(asm);
+  console.log(leafScript.toString('hex'));
+  
+  const scriptTree = {
+    output: leafScript,
+  };
+  const redeem = {
+    output: leafScript,
+    redeemVersion: 192,
+  };
+  const { output, witness, address: receiveAddress } = bitcoin.payments.p2tr({
+    internalPubkey,
+    scriptTree,
+    redeem,
+    network,
+  });
+  const txSize = 200 + inscription.body.length / 4;
+  const tapLeafScript = {
+    script: leafScript,
+    leafVersion: 192,
+    controlBlock: witness![witness!.length - 1],
+  };
+
+  const fundPsbt = await createSendBTC({
+    utxos,
+    toAddress: receiveAddress,
+    toAmount: UTXO_DUST + txSize * feeRate,
+    wallet,
+    pubkey,
+    network,
+    feeRate,
+    changeAddress,
+    dump: true,
+  });
+
+  const tx = new OrdTransaction(wallet, network, pubkey, feeRate);
+  const txid = await wallet.pushPsbt(fundPsbt.toHex())
+  console.log("txid", txid);
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  
+  const psbt = new bitcoin.Psbt({ network });
+  
+  psbt.addInput({
+    hash: txid,
+    index: 0,
+    witnessUtxo: { value: UTXO_DUST + txSize * feeRate, script: output! },
+  });
+
+  psbt.updateInput(0, {
+    tapLeafScript: [
+      {
+        leafVersion: redeem.redeemVersion,
+        script: redeem.output,
+        controlBlock: witness![witness!.length - 1],
+      },
+    ],
+  });
+  psbt.addOutput({ value: UTXO_DUST, address });
+  await psbt.signInputAsync(0, internalKey);
+  const customFinalizer = (_inputIndex: number, input: any) => {
+    const scriptSolution = [
+        input.tapScriptSig[0].signature,
+    ];
+    const witness = scriptSolution
+        .concat(tapLeafScript.script)
+        .concat(tapLeafScript.controlBlock);
+
+    return {
+        finalScriptWitness: witnessStackToScriptWitness(witness)
+    }
+}
+  psbt.finalizeInput(0, customFinalizer);
+  console.log(psbt.txInputs);
+  
+  if (dump) {
+    tx.dumpTx(psbt);
+  }
+
+  return psbt;
 }

@@ -5,6 +5,7 @@ bitcoin.initEccLib(ecc);
 import ECPairFactory, { ECPairInterface } from "ecpair";
 import { AddressType } from "./OrdTransaction";
 import { validator } from "./OrdTransaction";
+import { OpenApiService } from "./brc20";
 const ECPair = ECPairFactory(ecc);
 
 export const toXOnly = (pubKey: Buffer) =>
@@ -200,5 +201,13 @@ export class LocalWallet {
 
   getPublicKey() {
     return this.keyPair.publicKey.toString("hex");
+  }
+
+  async pushPsbt(psbt: string) {
+    const api = new OpenApiService(
+      this.network === bitcoin.networks.bitcoin ? "bitcoin" : "bitcoin_testnet"
+    );
+    const result = await api.pushTx(psbt);
+    return result;
   }
 }
