@@ -27,11 +27,11 @@ const BRC20_API_CONFIG: {
 } = {
   bitcoin: {
     network: 'btc',
-    url: 'https://unisat.io/api',
+    url: 'https://api.unisat.io/wallet-v4',
   },
   bitcoin_testnet: {
     network: 'btc_testnet',
-    url: 'https://unisat.io/testnet/api',
+    url: 'https://api-testnet.unisat.io/wallet-v4',
   },
 }
 
@@ -85,16 +85,8 @@ export class OpenApiService {
     return data
   }
 
-  async getWalletConfig(): Promise<any> {
-    const data = await this.httpGet('/v1/wallet/config', {})
-    if (data.status === API_STATUS.FAILED) {
-      throw new Error(data.message)
-    }
-    return data.result
-  }
-
   async getAddressBalance(address: string): Promise<BitcoinBalance> {
-    const data = await this.httpGet('/v2/address/balance', {
+    const data = await this.httpGet('/address/balance', {
       address,
     })
     if (data.status === API_STATUS.FAILED) {
@@ -104,7 +96,7 @@ export class OpenApiService {
   }
 
   async getMultiAddressAssets(addresses: string): Promise<AddressAssets[]> {
-    const data = await this.httpGet('/v3/address/multi-assets', {
+    const data = await this.httpGet('/address/multi-assets', {
       addresses,
     })
     if (data.status === API_STATUS.FAILED) {
@@ -114,7 +106,7 @@ export class OpenApiService {
   }
 
   async getAddressUtxo(address: string): Promise<UTXO[]> {
-    const data = await this.httpGet('/v3/address/btc-utxo', {
+    const data = await this.httpGet('/address/btc-utxo', {
       address,
     })
     if (data.status === API_STATUS.FAILED) {
@@ -124,7 +116,7 @@ export class OpenApiService {
   }
 
   async getInscriptionUtxo(inscriptionId: string): Promise<UTXO> {
-    const data = await this.httpGet('/v3/inscription/utxo', {
+    const data = await this.httpGet('/inscription/utxo', {
       inscriptionId,
     })
     if (data.status === API_STATUS.FAILED) {
@@ -134,7 +126,7 @@ export class OpenApiService {
   }
 
   async getInscriptionUtxos(inscriptionIds: string[]): Promise<UTXO[]> {
-    const data = await this.httpPost('/v3/inscription/utxos', {
+    const data = await this.httpPost('/inscription/utxos', {
       inscriptionIds,
     })
     if (data.status === API_STATUS.FAILED) {
@@ -148,7 +140,7 @@ export class OpenApiService {
     cursor: number,
     size: number
   ): Promise<{ list: Inscription[]; total: number }> {
-    const data = await this.httpGet('/v3/address/inscriptions', {
+    const data = await this.httpGet('/address/inscriptions', {
       address,
       cursor,
       size,
@@ -160,7 +152,7 @@ export class OpenApiService {
   }
 
   async getAddressRecentHistory(address: string): Promise<TxHistoryItem[]> {
-    const data = await this.httpGet('/v1/address/recent-history', {
+    const data = await this.httpGet('/address/recent-history', {
       address,
     })
     if (data.status === API_STATUS.FAILED) {
@@ -170,7 +162,7 @@ export class OpenApiService {
   }
 
   async getInscriptionSummary(): Promise<InscriptionSummary> {
-    const data = await this.httpGet('/v3/inscription-summary', {})
+    const data = await this.httpGet('/inscription-summary', {})
     if (data.status === API_STATUS.FAILED) {
       throw new Error(data.message)
     }
@@ -178,7 +170,7 @@ export class OpenApiService {
   }
 
   async getAppSummary(): Promise<AppSummary> {
-    const data = await this.httpGet('/v1/app-summary', {})
+    const data = await this.httpGet('/app-summary', {})
     if (data.status === API_STATUS.FAILED) {
       throw new Error(data.message)
     }
@@ -186,7 +178,7 @@ export class OpenApiService {
   }
 
   async pushTx(rawtx: string): Promise<string> {
-    const data = await this.httpPost('/v3/tx/broadcast', {
+    const data = await this.httpPost('/tx/broadcast', {
       rawtx,
     })
     if (data.status === API_STATUS.FAILED) {
@@ -196,7 +188,7 @@ export class OpenApiService {
   }
 
   async getFeeSummary(): Promise<FeeSummary> {
-    const data = await this.httpGet('/v1/fee-summary', {})
+    const data = await this.httpGet('/default/fee-summary', {})
     if (data.status === API_STATUS.FAILED) {
       throw new Error(data.message)
     }
@@ -204,7 +196,7 @@ export class OpenApiService {
   }
 
   async getDomainInfo(domain: string): Promise<Inscription> {
-    const data = await this.httpGet('/v3/address/search', { domain })
+    const data = await this.httpGet('/address/search', { domain })
     if (data.status === API_STATUS.FAILED) {
       throw new Error(data.message)
     }
@@ -217,7 +209,7 @@ export class OpenApiService {
     amount: string,
     feeRate: number
   ): Promise<InscribeOrder> {
-    const data = await this.httpPost('/v3/brc20/inscribe-transfer', {
+    const data = await this.httpPost('/brc20/inscribe-transfer', {
       address,
       tick,
       amount,
@@ -230,7 +222,7 @@ export class OpenApiService {
   }
 
   async getInscribeResult(orderId: string): Promise<TokenTransfer> {
-    const data = await this.httpGet('/v3/brc20/order-result', { orderId })
+    const data = await this.httpGet('/brc20/order-result', { orderId })
     if (data.status === API_STATUS.FAILED) {
       throw new Error(data.message)
     }
@@ -242,7 +234,7 @@ export class OpenApiService {
     cursor: number,
     size: number
   ): Promise<{ list: TokenBalance[]; total: number }> {
-    const data = await this.httpGet('/v3/brc20/tokens', {
+    const data = await this.httpGet('/brc20/tokens', {
       address,
       cursor,
       size,
@@ -257,7 +249,7 @@ export class OpenApiService {
     address: string,
     ticker: string
   ): Promise<AddressTokenSummary> {
-    const data = await this.httpGet('/v3/brc20/token-summary', {
+    const data = await this.httpGet('/brc20/token-summary', {
       address,
       ticker: encodeURIComponent(ticker),
     })
@@ -273,7 +265,7 @@ export class OpenApiService {
     cursor: number,
     size: number
   ): Promise<{ list: TokenTransfer[]; total: number }> {
-    const data = await this.httpGet('/v3/brc20/transferable-list', {
+    const data = await this.httpGet('/brc20/transferable-list', {
       address,
       ticker: encodeURIComponent(ticker),
       cursor,
@@ -286,7 +278,7 @@ export class OpenApiService {
   }
 
   async decodePsbt(psbtHex: string): Promise<DecodedPsbt> {
-    const data = await this.httpPost('/v3/tx/decode', { psbtHex })
+    const data = await this.httpPost('/tx/decode', { psbtHex })
     if (data.status === API_STATUS.FAILED) {
       throw new Error(data.message)
     }

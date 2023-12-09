@@ -5,7 +5,7 @@ bitcoin.initEccLib(ecc);
 import ECPairFactory, { ECPairInterface } from "ecpair";
 import { AddressType } from "./OrdTransaction";
 import { validator } from "./OrdTransaction";
-import { OpenApiService } from "./brc20";
+import { OpenApiService } from "./open_api";
 const ECPair = ECPairFactory(ecc);
 
 export const toXOnly = (pubKey: Buffer) =>

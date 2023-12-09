@@ -8,7 +8,7 @@ import BIP32Factory from "bip32";
 const rng = require("randombytes");
 
 export * from "./LocalWallet";
-export * from "./brc20"
+export * from "./open_api"
 export async function createSendBTC({
   utxos,
   toAddress,
