@@ -48,7 +48,7 @@
     "@types/chai": "^4.2.20",
     "@types/mocha": "^8.2.2",
     "@types/node": "^16.11.10",
-    "babel-loader": "^8.2.3",
+    "babel-loader": "^9.0.0",
     "chai": "^4.3.4",
     "clean-webpack-plugin": "^4.0.0",
     "cross-env": "^7.0.3",
