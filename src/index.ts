@@ -1,14 +1,14 @@
 import { OrdTransaction, UnspentOutput, toXOnly } from "./OrdTransaction";
 import { OrdUnit } from "./OrdUnit";
 import { OrdUnspendOutput, UTXO_DUST } from "./OrdUnspendOutput";
-import * as bitcoin from "bitcoinjs-lib";
-import { satoshisToAmount, witnessStackToScriptWitness } from "./utils";
+import * as bitcoin from "bitcoinjs-lib-mpc";
+import { calculateInscribeFee, satoshisToAmount, witnessStackToScriptWitness } from "./utils";
 import ecc from "@bitcoinerlab/secp256k1";
 import BIP32Factory from "bip32";
 const rng = require("randombytes");
 
 export * from "./LocalWallet";
-export * from "./open_api"
+export * from "./open_api";
 export async function createSendBTC({
   utxos,
   toAddress,
@@ -638,10 +638,15 @@ export async function inscribe({
   const bip32 = BIP32Factory(ecc);
   const internalKey = bip32.fromSeed(rng(64), network);
   const internalPubkey = toXOnly(internalKey.publicKey);
-  const asm = `${internalPubkey.toString("hex")} OP_CHECKSIG OP_0 OP_IF ${Buffer.from("ord", 'utf8').toString("hex")} 01 ${Buffer.from(inscription.contentType, 'utf8').toString('hex')} OP_0 ${inscription.body.toString('hex')} OP_ENDIF`
+  const asm = `${internalPubkey.toString(
+    "hex"
+  )} OP_CHECKSIG OP_0 OP_IF ${Buffer.from("ord", "utf8").toString(
+    "hex"
+  )} 01 ${Buffer.from(inscription.contentType, "utf8").toString(
+    "hex"
+  )} OP_0 ${inscription.body.toString("hex")} OP_ENDIF`;
   const leafScript = bitcoin.script.fromASM(asm);
-  console.log(leafScript.toString('hex'));
-  
+
   const scriptTree = {
     output: leafScript,
   };
@@ -649,13 +654,20 @@ export async function inscribe({
     output: leafScript,
     redeemVersion: 192,
   };
-  const { output, witness, address: receiveAddress } = bitcoin.payments.p2tr({
+  const {
+    output,
+    witness,
+    address: receiveAddress,
+  } = bitcoin.payments.p2tr({
     internalPubkey,
     scriptTree,
     redeem,
     network,
   });
-  const txSize = 200 + inscription.body.length / 4;
+
+  const toAmount = calculateInscribeFee({ fileSize: inscription.body.length, address, feeRate});
+  console.log(toAmount);
+  
   const tapLeafScript = {
     script: leafScript,
     leafVersion: 192,
@@ -665,7 +677,7 @@ export async function inscribe({
   const fundPsbt = await createSendBTC({
     utxos,
     toAddress: receiveAddress,
-    toAmount: UTXO_DUST + txSize * feeRate,
+    toAmount: toAmount,
     wallet,
     pubkey,
     network,
@@ -674,17 +686,14 @@ export async function inscribe({
     dump: true,
   });
 
-  const tx = new OrdTransaction(wallet, network, pubkey, feeRate);
-  const txid = await wallet.pushPsbt(fundPsbt.toHex())
-  console.log("txid", txid);
+  const fundTx = fundPsbt.extractTransaction();
+  const txid = await wallet.pushPsbt(fundTx.toHex());
   await new Promise((resolve) => setTimeout(resolve, 1000));
-  
   const psbt = new bitcoin.Psbt({ network });
-  
   psbt.addInput({
     hash: txid,
     index: 0,
-    witnessUtxo: { value: UTXO_DUST + txSize * feeRate, script: output! },
+    witnessUtxo: { value: toAmount, script: output! },
   });
 
   psbt.updateInput(0, {
@@ -699,23 +708,19 @@ export async function inscribe({
   psbt.addOutput({ value: UTXO_DUST, address });
   await psbt.signInputAsync(0, internalKey);
   const customFinalizer = (_inputIndex: number, input: any) => {
-    const scriptSolution = [
-        input.tapScriptSig[0].signature,
-    ];
+    const scriptSolution = [input.tapScriptSig[0].signature];
     const witness = scriptSolution
-        .concat(tapLeafScript.script)
-        .concat(tapLeafScript.controlBlock);
+      .concat(tapLeafScript.script)
+      .concat(tapLeafScript.controlBlock);
 
     return {
-        finalScriptWitness: witnessStackToScriptWitness(witness)
-    }
-}
+      finalScriptWitness: witnessStackToScriptWitness(witness),
+    };
+  };
   psbt.finalizeInput(0, customFinalizer);
-  console.log(psbt.txInputs);
-  
   if (dump) {
+    const tx = new OrdTransaction(wallet, network, pubkey, feeRate);
     tx.dumpTx(psbt);
   }
-
   return psbt;
 }

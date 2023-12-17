@@ -8,3 +8,4 @@ docs/source/_build
 lib
 es 
 umd
+.env

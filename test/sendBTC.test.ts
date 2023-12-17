@@ -1,6 +1,5 @@
 import * as bitcoin from "bitcoinjs-lib";
 import { expect } from "chai";
-import { OrdUnspendOutput } from "../src/OrdUnspendOutput";
 import { AddressType, validator } from "../src/OrdTransaction";
 import {
   LocalWallet,
@@ -8,7 +7,10 @@ import {
   publicKeyToScriptPk,
   toPsbtNetwork,
 } from "../src/LocalWallet";
-import { createSendBTC } from "../src";
+import { OpenApiService, createSendBTC } from "../src";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 interface TestUtxoData {
   satoshis: number;
@@ -81,6 +83,24 @@ const BOB_ADDRESS = "tb1qmfla5j7cpdvmswtruldgvjvk87yrflrfsf6hh0";
 describe("sendBTC", () => {
   beforeEach(() => {
     // todo
+  });
+
+  it("send btc", async function () {
+    const wif = process.env.WALLET_WIF!;
+    const wallet = new LocalWallet(wif, NetworkType.TESTNET, AddressType.P2TR);
+    const brc20Api = new OpenApiService("bitcoin_testnet");
+    const walletAddress = wallet.address;
+    const walletPubkey = wallet.getPublicKey();
+    const utxosOutputs = await brc20Api.getAddressUtxo(walletAddress);
+    const testPsbt = await wallet.sendBTC({
+      utxos: utxosOutputs,
+      feeRate: 1,
+      receiverToPayFee: false,
+      to: "tb1qaprhs93h9nefh06rxfeq8vt206slmgc3hqzfna",
+      amount: 1000,
+    });
+    // @ts-ignore
+    expect(hash).to.be.a("string");
   });
 
   describe("basic", function () {

@@ -1,20 +1,20 @@
 {
   "name": "ord-tools",
-  "version": "0.4.0",
+  "version": "1.0.6",
   "description": "Ordinals Utils",
   "keywords": [
     "bitcoin",
     "keyring"
   ],
-  "homepage": "https://github.com/unisat-wallet/ord-utils#readme",
+  "homepage": "https://github.com/stonega/ord-tools#readme",
   "bugs": {
-    "url": "https://github.com/unisat-wallet/ord-utils/issues"
+    "url": "https://github.com/stonega/ord-tools/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/unisat-wallet/ord-utils.git"
+    "url": "https://github.com/stonega/ord-tools.git"
   },
-  "author": "Kervin",
+  "author": "Stone",
   "license": "ISC",
   "main": "lib/index.js",
   "module": "es/index.js",
@@ -28,7 +28,7 @@
     "build:cjs": "rimraf lib && cross-env BABEL_ENV=cjs gulp build",
     "build:esm": "rimraf es && cross-env BABEL_ENV=esm gulp build",
     "build:typed": "tsc --declaration --emitDeclarationOnly --noEmit false",
-    "test": "mocha -r ts-node/register test/**/*.ts",
+    "test": "mocha -r ts-node/register test/send.test.ts",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
@@ -36,6 +36,7 @@
     "bignumber.js": "^9.1.1",
     "bip32": "^4.0.0",
     "bitcoinjs-lib": "^6.1.0",
+    "bitcoinjs-lib-mpc": "^6.1.16",
     "bs58check": "^2.1.2",
     "ecpair": "^2.1.0"
   },
@@ -51,6 +52,7 @@
     "chai": "^4.3.4",
     "clean-webpack-plugin": "^4.0.0",
     "cross-env": "^7.0.3",
+    "dotenv": "^16.3.1",
     "glob": "^7.1.7",
     "gulp": "^4.0.2",
     "gulp-babel": "^8.0.0",
