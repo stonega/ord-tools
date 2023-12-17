@@ -9,3 +9,4 @@ lib
 es 
 umd
 .env
+npm-debug.log

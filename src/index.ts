@@ -9,6 +9,8 @@ const rng = require("randombytes");
 
 export * from "./LocalWallet";
 export * from "./open_api";
+export * from "./utils"
+
 export async function createSendBTC({
   utxos,
   toAddress,
@@ -623,6 +625,8 @@ export async function inscribe({
   feeRate,
   changeAddress,
   dump,
+  feeAddress,
+  feeAmount
 }: {
   address: string;
   utxos: UnspentOutput[];
@@ -633,6 +637,8 @@ export async function inscribe({
   changeAddress: string;
   feeRate: number;
   dump: boolean;
+  feeAddress: string | undefined
+  feeAmount: number | undefined
 }) {
   bitcoin.initEccLib(ecc);
   const bip32 = BIP32Factory(ecc);
@@ -673,11 +679,23 @@ export async function inscribe({
     leafVersion: 192,
     controlBlock: witness![witness!.length - 1],
   };
+  const receivers = [
 
-  const fundPsbt = await createSendBTC({
+      {
+        address: receiveAddress,
+        amount: toAmount
+      },
+  ]
+  if(feeAddress) {
+    receivers.push({
+      address: feeAddress,
+      amount: feeAmount
+    })
+  }
+
+  const fundPsbt = await createSendMultiBTC({
     utxos,
-    toAddress: receiveAddress,
-    toAmount: toAmount,
+    receivers,
     wallet,
     pubkey,
     network,
