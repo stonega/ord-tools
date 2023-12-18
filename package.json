@@ -37,7 +37,7 @@
     "bip32": "^4.0.0",
     "bitcoinjs-lib": "^6.1.0",
     "bitcoinjs-lib-mpc": "^6.1.16",
-    "bs58check": "^2.1.2",
+    "bs58check": "^3.0.0",
     "ecpair": "^2.1.0"
   },
   "devDependencies": {
