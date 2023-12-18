@@ -672,7 +672,6 @@ export async function inscribe({
   });
 
   const toAmount = calculateInscribeFee({ fileSize: inscription.body.length, address, feeRate});
-  console.log(toAmount);
   
   const tapLeafScript = {
     script: leafScript,
@@ -738,7 +737,7 @@ export async function inscribe({
   psbt.finalizeInput(0, customFinalizer);
   if (dump) {
     const tx = new OrdTransaction(wallet, network, pubkey, feeRate);
-    tx.dumpTx(psbt);
+    return tx.dumpTx(psbt);
   }
   return psbt;
 }

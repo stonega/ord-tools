@@ -116,8 +116,6 @@ export class OpenApiService {
     if (data.status === API_STATUS.FAILED) {
       throw new Error(data.message);
     }
-    console.log(data);
-    
     return data.result;
   }
 
@@ -190,7 +188,6 @@ export class OpenApiService {
     if (data.status === API_STATUS.FAILED) {
       throw new Error(data.message);
     }
-    console.log({txid: data.result});
     return data.result;
   }
 
