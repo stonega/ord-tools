@@ -70,7 +70,7 @@ export function calculateInscribeFee({
     addrSize = 23 + 1;
   }
 
-  const baseSize = 88;
+  const baseSize = 44;
   let networkSats = Math.ceil(
     ((fileSize + contentTypeSize) / 4 + (baseSize + 8 + addrSize + 8 + 23)) *
       feeRate
