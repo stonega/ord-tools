@@ -2,14 +2,18 @@ import { OrdTransaction, UnspentOutput, toXOnly } from "./OrdTransaction";
 import { OrdUnit } from "./OrdUnit";
 import { OrdUnspendOutput, UTXO_DUST } from "./OrdUnspendOutput";
 import * as bitcoin from "bitcoinjs-lib-mpc";
-import { calculateInscribeFee, satoshisToAmount, witnessStackToScriptWitness } from "./utils";
+import {
+  calculateInscribeFee,
+  satoshisToAmount,
+  witnessStackToScriptWitness,
+} from "./utils";
 import ecc from "@bitcoinerlab/secp256k1";
 import BIP32Factory from "bip32";
 const rng = require("randombytes");
 
 export * from "./LocalWallet";
 export * from "./open_api";
-export * from "./utils"
+export * from "./utils";
 
 export async function createSendBTC({
   utxos,
@@ -626,7 +630,7 @@ export async function inscribe({
   changeAddress,
   dump,
   feeAddress,
-  feeAmount
+  feeAmount,
 }: {
   address: string;
   utxos: UnspentOutput[];
@@ -637,8 +641,8 @@ export async function inscribe({
   changeAddress: string;
   feeRate: number;
   dump: boolean;
-  feeAddress: string | undefined
-  feeAmount: number | undefined
+  feeAddress?: string;
+  feeAmount?: number;
 }) {
   bitcoin.initEccLib(ecc);
   const bip32 = BIP32Factory(ecc);
@@ -671,25 +675,28 @@ export async function inscribe({
     network,
   });
 
-  const toAmount = calculateInscribeFee({ fileSize: inscription.body.length, address, feeRate});
-  
+  const toAmount = calculateInscribeFee({
+    fileSize: inscription.body.length,
+    address,
+    feeRate,
+  });
+
   const tapLeafScript = {
     script: leafScript,
     leafVersion: 192,
     controlBlock: witness![witness!.length - 1],
   };
   const receivers = [
-
-      {
-        address: receiveAddress,
-        amount: toAmount
-      },
-  ]
-  if(feeAddress) {
+    {
+      address: receiveAddress,
+      amount: toAmount,
+    },
+  ];
+  if (feeAddress) {
     receivers.push({
       address: feeAddress,
-      amount: feeAmount
-    })
+      amount: feeAmount,
+    });
   }
 
   const fundPsbt = await createSendMultiBTC({
@@ -739,5 +746,8 @@ export async function inscribe({
     const tx = new OrdTransaction(wallet, network, pubkey, feeRate);
     return tx.dumpTx(psbt);
   }
-  return psbt;
+  return {
+    txid,
+    psbt,
+  };
 }
