@@ -1,5 +1,11 @@
 import BigNumber from "bignumber.js";
+import BIP32Factory from "bip32";
+import * as bitcoin from "bitcoinjs-lib-mpc";
 import varuint from "varuint-bitcoin";
+import ecc from "@bitcoinerlab/secp256k1";
+const rng = require("randombytes");
+import { toXOnly } from ".";
+import { UTXO_DUST } from "./OrdUnspendOutput";
 
 export function satoshisToAmount(val: number) {
   const num = new BigNumber(val);
@@ -45,50 +51,82 @@ export function witnessStackToScriptWitness(witness: Buffer[]) {
   return buffer;
 }
 
-/// Calculate inscription fee
-export function calculateInscribeFee({
-  fileSize,
-  address,
-  feeRate
-}: {
-  fileSize: number;
-  address: string;
-  feeRate: number
-}) {
-  const inscriptionBalance = 546; // the balance in each inscription
-  const fileCount = 1; // the fileCount
-  const contentTypeSize = 100; // the size of contentType
-
-  const balance = inscriptionBalance * fileCount;
-
-  let addrSize = 25 + 1; // p2pkh
-  if (address.indexOf("bc1q") == 0 || address.indexOf("tb1q") == 0) {
-    addrSize = 22 + 1;
-  } else if (address.indexOf("bc1p") == 0 || address.indexOf("tb1p") == 0) {
-    addrSize = 34 + 1;
-  } else if (address.indexOf("2") == 0 || address.indexOf("3") == 0) {
-    addrSize = 23 + 1;
+export async function estimateInscribeFee(
+  {
+    inscription,
+    network,
+    address,
+    feeRate
+  } : {
+    inscription: { body: Buffer; contentType: string }
+    address: string
+    network: any
+    feeRate: number
   }
+) {
+  bitcoin.initEccLib(ecc);
+  const bip32 = BIP32Factory(ecc);
+  const internalKey = bip32.fromSeed(rng(64), network);
+  const internalPubkey = toXOnly(internalKey.publicKey);
+  const asm = `${internalPubkey.toString(
+    "hex"
+  )} OP_CHECKSIG OP_0 OP_IF ${Buffer.from("ord", "utf8").toString(
+    "hex"
+  )} 01 ${Buffer.from(inscription.contentType, "utf8").toString(
+    "hex"
+  )} OP_0 ${inscription.body.toString("hex")} OP_ENDIF`;
+  const leafScript = bitcoin.script.fromASM(asm);
 
-  const baseSize = 44;
-  let networkSats = Math.ceil(
-    ((fileSize + contentTypeSize) / 4 + (baseSize + 8 + addrSize + 8 + 23)) *
-      feeRate
-  );
-  if (fileCount > 1) {
-    networkSats = Math.ceil(
-      ((fileSize + contentTypeSize) / 4 +
-        (baseSize +
-          8 +
-          addrSize +
-          (35 + 8) * (fileCount - 1) +
-          8 +
-          23 +
-          (baseSize + 8 + addrSize + 0.5) * (fileCount - 1))) *
-        feeRate
-    );
-  }
+  const scriptTree = {
+    output: leafScript,
+  };
+  const redeem = {
+    output: leafScript,
+    redeemVersion: 192,
+  };
+  const {
+    output,
+    witness,
+    address: receiveAddress,
+  } = bitcoin.payments.p2tr({
+    internalPubkey,
+    scriptTree,
+    redeem,
+    network,
+  });
+  const tapLeafScript = {
+    script: leafScript,
+    leafVersion: 192,
+    controlBlock: witness![witness!.length - 1],
+  };
+  const psbt = new bitcoin.Psbt({ network });
+  /// Fake input
+  psbt.addInput({
+    hash: 'e87f2c0a9b4d48e69d23b69256ae5ae15a5b6c04885ec03f4cb4b8eefcd95a27',
+    index: 0,
+    witnessUtxo: { value: 1000, script: output! },
+  });
+  psbt.updateInput(0, {
+    tapLeafScript: [
+      {
+        leafVersion: redeem.redeemVersion,
+        script: redeem.output,
+        controlBlock: witness![witness!.length - 1],
+      },
+    ],
+  });
+  psbt.addOutput({ value: UTXO_DUST, address });
+  await psbt.signInputAsync(0, internalKey);
+  const customFinalizer = (_inputIndex: number, input: any) => {
+    const scriptSolution = [input.tapScriptSig[0].signature];
+    const witness = scriptSolution
+      .concat(tapLeafScript.script)
+      .concat(tapLeafScript.controlBlock);
 
-  const total = balance + networkSats;
-  return total
+    return {
+      finalScriptWitness: witnessStackToScriptWitness(witness),
+    };
+  };
+  psbt.finalizeInput(0, customFinalizer);
+  return Math.ceil(psbt.extractTransaction(true).virtualSize() * feeRate);
 }

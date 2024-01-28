@@ -3,7 +3,7 @@ import { OrdUnit } from "./OrdUnit";
 import { OrdUnspendOutput, UTXO_DUST } from "./OrdUnspendOutput";
 import * as bitcoin from "bitcoinjs-lib-mpc";
 import {
-  calculateInscribeFee,
+  estimateInscribeFee,
   satoshisToAmount,
   witnessStackToScriptWitness,
 } from "./utils";
@@ -675,8 +675,9 @@ export async function inscribe({
     network,
   });
 
-  const toAmount = calculateInscribeFee({
-    fileSize: inscription.body.length,
+  const toAmount = await estimateInscribeFee({
+    inscription,
+    network,
     address,
     feeRate,
   });
@@ -744,10 +745,14 @@ export async function inscribe({
   psbt.finalizeInput(0, customFinalizer);
   if (dump) {
     const tx = new OrdTransaction(wallet, network, pubkey, feeRate);
-    return tx.dumpTx(psbt);
+    const newPsbt = await tx.dumpTx(psbt)
+    return {
+      txid,
+      psbt: newPsbt
+    }
   }
   return {
-    txid,
     psbt,
+    txid,
   };
 }
